@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: classes/constructors/sql.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: classes/constructors/sql.js</h1>
+
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>module.exports = SqlConstructor;
+var _ = require('underscore');
+var _s = require('underscore.string');
+
+/**
+ * Конструктор для SQL запросов
+ * @namespace SqlConstructor
+ * @param table
+ * @constructor
+ */
+function SqlConstructor(table) {
+    this.table = table;
+}
+
+/**
+ * Оборачивает в кавычки
+ * @private
+ * @param value
+ * @returns {string}
+ */
+SqlConstructor.prototype.quote = function (value) {
+    return 'string' === typeof value ? '\'' + value + '\'' : value;
+}
+
+/**
+ * Возвращает часть выражения SET column_name=column_value
+ * @private
+ * @param obj
+ * @returns {string}
+ */
+SqlConstructor.prototype.getSet = function (obj) {
+    return 'SET ' + this.getEquals(obj).join(',');
+}
+
+/**
+ * Возращает перечисление колонок для INSERT
+ * @private
+ * @param columns
+ * @returns {string}
+ */
+SqlConstructor.prototype.getInsertColumns = function (columns) {
+    var _columns = _.map(columns, function (column) {
+        return _s.underscored(column)
+    });
+    return '(' + _columns.join(',') + ')';
+}
+
+
+/**
+ * Возвращает перечисление значений для INSERT
+ * @private
+ * @param values
+ * @returns {string}
+ */
+SqlConstructor.prototype.getInsertValues = function (values) {
+    var self = this;
+    return '(' + _.map(values, function (value) {
+        return self.quote(value);
+    }).join(',') + ')';
+}
+
+/**
+ * Возвращает INSERT запрос
+ * @private
+ * @param table
+ * @param columns
+ * @param values
+ * @returns {string}
+ */
+SqlConstructor.prototype.getInsertStatement = function (table, columns, values) {
+    return 'INSERT INTO ' + this.table + columns + ' VALUES' + values + ';';
+}
+
+/**
+ * Возвращает часть выражения формата column_name=column_value
+ * @private
+ * @param obj
+ * @returns {*}
+ */
+SqlConstructor.prototype.getEquals = function (obj) {
+    var self = this;
+    return _.map(obj, function (value, key) {
+        return _s.underscored(key) + '=' + ( 'object' === typeof value ? value.raw : self.quote(value));
+    });
+}
+
+/**
+ * Связывает условия AND перечислением
+ * @private
+ * @param obj
+ * @returns {*|string}
+ */
+SqlConstructor.prototype.getAndConditions = function (obj) {
+    var arr;
+    if (obj instanceof Array) {
+        arr = obj;
+    } else {
+        arr = this.getEquals(obj);
+    }
+    return arr.join(' AND ');
+}
+
+/**
+ * Связывает условия OR перечислением
+ * @private
+ * @param obj
+ * @returns {*|string}
+ */
+SqlConstructor.prototype.getOrConditions = function (obj) {
+    var arr;
+    if (obj instanceof Array) {
+        arr = obj;
+    } else {
+        arr = this.getEquals(obj);
+    }
+    return arr.join(' OR ');
+}
+
+/**
+ * Возвращает WHERE выражение
+ * @private
+ * @param obj
+ * @returns {string}
+ */
+SqlConstructor.prototype.getWhereStatement = function (obj) {
+    if (!obj) {
+        return '';
+    }
+    var self = this;
+    var conditions;
+    if (obj instanceof Array) {
+        conditions = this.getOrConditions(_.map(obj, function (obj) {
+            return '(' + self.getAndConditions(obj) + ')';
+        }));
+    } else {
+        conditions = this.getAndConditions(obj);
+    }
+    return 'WHERE ' + conditions;
+}
+
+
+/**
+ * Связывает значения запятой
+ * @private
+ * @param multiValues
+ * @returns {*|string}
+ */
+SqlConstructor.prototype.concatValues = function (multiValues) {
+    return multiValues.join(',');
+}
+
+/**
+ * Возвращает INSERT запрос
+ * @public
+ * @param {object|object[]} obj
+ * @returns {string}
+ */
+SqlConstructor.prototype.insert = function (obj) {
+    if ('object' !== typeof obj)throw new Error('First argument must be an Object or Array');
+    var self = this;
+    var columns;
+    var values;
+    if (obj instanceof Array) {
+        columns = this.getInsertColumns(Object.keys(obj[0]));
+        values = this.concatValues(_.map(obj, function (row) {
+            return  self.getInsertValues(_.values(row));
+        }));
+    } else {
+        columns = this.getInsertColumns(Object.keys(obj));
+        values = this.getInsertValues(_.values(obj));
+    }
+
+    return this.getInsertStatement(this.table, columns, values);
+}
+
+/**
+ * Возвращает DELETE запрос
+ * @public
+ * @param {object|object[]} obj
+ * @returns {string}
+ */
+SqlConstructor.prototype.delete = function (obj) {
+    if ('object' !== typeof obj)throw new Error('First argument must be an Object or Array');
+
+    var where = this.getWhereStatement(obj);
+
+    return 'DELETE FROM ' + this.table + ' ' + where + ';';
+}
+
+/**
+ * Возвращает UPDATE запрос
+ * @public
+ * @param {object|object[]} obj
+ * @returns {string}
+ */
+SqlConstructor.prototype.update = function (obj) {
+    if ('object' !== typeof obj)throw new Error('First argument must be an Object or Array');
+
+    var where = this.getWhereStatement(obj.where);
+    var set = this.getSet(obj.set);
+
+    return 'UPDATE ' + this.table + ' ' + set + ' ' + where;
+}
+
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Modules</h3><ul><li><a href="module-db.html">db</a></li></ul><h3>Classes</h3><ul><li><a href="Connector.html">Connector</a></li><li><a href="Connector.Mysql.html">Mysql</a></li><li><a href="Connector.Pg.html">Pg</a></li><li><a href="Data.html">Data</a></li><li><a href="Model.html">Model</a></li><li><a href="ModelFactory.html">ModelFactory</a></li><li><a href="ModelsLoader.html">ModelsLoader</a></li><li><a href="SqlConstructor.html">SqlConstructor</a></li><li><a href="SqlConstructor.MysqlConstructor.html">MysqlConstructor</a></li><li><a href="SqlConstructor.PgConstructor.html">PgConstructor</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-alpha5</a> on Fri Apr 25 2014 08:36:49 GMT+0400 (MSK)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

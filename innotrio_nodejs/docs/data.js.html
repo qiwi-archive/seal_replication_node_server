@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: classes/data.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: classes/data.js</h1>
+
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>module.exports = Data;
+var util = require('util');
+var _ = require('underscore');
+var _s = require('underscore.string');
+
+/**
+ * Класс для переименования колонок запроса в PostGre
+ * @param db Экземпляр класса
+ * @param map Может быть строкой с именами колонок базы в формате undescored 'user_id,user_name' и т.д. через запятую - на выходе колонки будут перименованы в camelCase: userId, userName
+ * Может быть массивом имен колонок [['user_id','user_name']]
+ * Может быть объектом {{id:'user_id',name:'user_name'}}
+ * @constructor
+ * @throws Second argument must be Object, String or Array
+ */
+function Data(db, map) {
+    this.db = db;
+    this.map = {};
+
+    var self = this;
+    if ('object' === typeof map &amp;&amp; !util.isArray(map)) {
+        this.map = map;
+    } else if (util.isArray(map) || 'string' === typeof map) {
+        var mapArray;
+        if ('string' === typeof map) {
+            mapArray = map.split(',');
+        } else {
+            mapArray = map;
+        }
+        mapArray.forEach(function (column) {
+            column = _s.trim(column);
+            self.map[_s.camelize(column)] = column;
+        });
+    } else {
+        if (process.env.NODE_ENV === 'development') {
+            throw Error('Second argument must be Object, String or Array');
+        }
+    }
+}
+
+/**
+ * Переименование одной строчки из базы
+ * @param row {{user_name:'username',user_id:1}}
+ * @returns {{}}
+ */
+Data.prototype.mapRow = function (row) {
+    var self = this;
+    var mappedRow = {};
+    Object.keys(this.map).forEach(function (key) {
+        if (row.hasOwnProperty(self.map[key])) {
+            mappedRow[key] = row[self.map[key]];
+        }
+    });
+    return mappedRow;
+}
+
+/**
+ * Переименование массива строчек
+ * @param rows
+ * @returns {Array}
+ */
+Data.prototype.mapRows = function (rows) {
+    var self = this;
+    var mappedRows = [];
+    rows.forEach(function (row) {
+        mappedRows.push(self.mapRow(row));
+    });
+    return mappedRows;
+}
+
+/**
+ * Обертка для callback
+ * @param callback
+ * @returns {Function}
+ * @throws Callback must be a function
+ */
+Data.prototype.getResponseHandler = function (callback) {
+    var self = this;
+    if ('function' !== typeof callback)throw Error('Callback must be a function');
+    return function (error, rows) {
+        if (error) {
+            return callback(error);
+        }
+        if (rows === false) {
+            return callback(null, false);
+        }
+
+        if (util.isArray(rows)) {
+            callback(null, self.mapRows(rows));
+        } else {
+            callback(null, self.mapRow(rows));
+        }
+    }
+}
+
+/**
+ * Выполняет подстановку в SELECT * FROM значения колонок из map SELECT some_column,another_column FROM
+ * @param query
+ * @returns {string}
+ */
+Data.prototype.insertColumns = function (query) {
+    return query.replace(/\*/g, _.values(this.map).join(','));
+}
+
+/**
+ * Далее идут оберки для запросов к базе
+ */
+
+/**
+ * Выполнение запроса и возврат одной строчки
+ * @param query
+ * @param params
+ * @param done
+ */
+Data.prototype.getRow = function (query, params, done) {
+    this.db.getRow(this.insertColumns(query), params, this.getResponseHandler(done));
+}
+
+/**
+ * Выполнение запроса и возврат всех строчек
+ * @param query
+ * @param params
+ * @param done
+ */
+Data.prototype.getRows = function (query, params, done) {
+    this.db.getRows(this.insertColumns(query), params, this.getResponseHandler(done));
+}
+
+/**
+ * Выполнение запроса на добавление данных в таблицу
+ * @param table
+ * @param obj
+ * @param done
+ */
+Data.prototype.insert = function (table, obj, done) {
+    this.db.insert(table, obj, this.getResponseHandler(done));
+}
+
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Modules</h3><ul><li><a href="module-db.html">db</a></li></ul><h3>Classes</h3><ul><li><a href="Connector.html">Connector</a></li><li><a href="Connector.Mysql.html">Mysql</a></li><li><a href="Connector.Pg.html">Pg</a></li><li><a href="Data.html">Data</a></li><li><a href="Model.html">Model</a></li><li><a href="ModelFactory.html">ModelFactory</a></li><li><a href="ModelsLoader.html">ModelsLoader</a></li><li><a href="SqlConstructor.html">SqlConstructor</a></li><li><a href="SqlConstructor.MysqlConstructor.html">MysqlConstructor</a></li><li><a href="SqlConstructor.PgConstructor.html">PgConstructor</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-alpha5</a> on Fri Apr 25 2014 08:36:49 GMT+0400 (MSK)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

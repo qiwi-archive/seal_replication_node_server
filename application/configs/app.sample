@@ -1,0 +1,44 @@
+process.env.NODE_ENV = 'development';
+
+exports.production = {
+}
+
+exports.development = {
+    port: 2211,
+    url: '/api',
+    cookies: {
+        secret: '*'
+    },
+    db: {
+        host: '127.0.0.1',
+        port: 5432,
+        database: '47cases',
+        user: 'postgres',
+        password: ''
+    },
+    oracleQwStat: {
+        user: "*",
+        password: "*",
+        connectString: "*"
+    },
+    oracleQw: {
+        user: "*",
+        password: "*",
+        connectString: "*"
+    },
+    oracleAnalit: {
+        user: "*",
+        password: "*",
+        connectString: "*"
+    },
+    vertica: {
+            host: "*",
+            user: "*",
+            password: "*",
+            database: "*"
+        },
+    //Ключ для запросов в /api/oracle
+    oracleApiRequestCode: '*',
+    //Необходимость репликации пятиминуток
+    replicate_5_txns: false
+}

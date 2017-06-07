@@ -1,0 +1,32 @@
+COPY
+		{{tableName}}(
+			prv_db,
+			id_prv,
+			prv_name,
+			prv_url,
+			prs_manager,
+			prv_type_id,
+			prv_type,
+			prs_state_id,
+			prs_state,
+			accept_status_id,
+			accept_status,
+			shema_id,
+			shema,
+			prv_add_date,
+			contract_date_from,
+			agregator,
+			prv_global_name,
+			prv_merch_name,
+			prv_first_txn_date,
+			prv_last_txn_date,
+			agt_id,
+			reject_cause,
+			prv_is_otp_auth_pay,
+			prv_is_unlinked_card_pay,
+			prv_mrkt_name,
+			prv_mrkt_sub_name,
+			prv_jur_name,
+			replication_start_date
+		)
+	FROM STDIN WITH QUOTE AS E'\x1f' CSV

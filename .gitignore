@@ -1,0 +1,5 @@
+**.hg*
+.idea
+**/config*/*.js*
+node_modules
+*select*.sql

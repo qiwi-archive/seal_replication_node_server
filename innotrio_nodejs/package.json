@@ -1,0 +1,17 @@
+{
+  "name": "innotrio_nodejs",
+  "version": "0.0.1",
+  "scripts": {
+    "test": "mocha test/**/test-*.js -R list -r should --ui tdd",
+    "docs": "jsdoc db -r -d docs"
+  },
+  "devDependencies": {
+    "jsdoc": "^3.3.0-alpha5",
+    "mocha": "^1.18.2",
+    "should": "^3.3.0"
+  },
+  "dependencies": {
+    "mysql": "^2.1.1",
+    "type-of-is": "^3.2.0"
+  }
+}
